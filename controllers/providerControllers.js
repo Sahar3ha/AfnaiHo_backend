@@ -25,6 +25,28 @@ const getAllProviders = async(req ,res) =>{
         res.status(500).json("Server Error")
     }
 }
+const getSingleProvider= async(req,res)=>{
+    const id = req.params.id;
+    if(!id){
+        return res.json({
+            success : false,
+            message : "User ID is required!"
+        })
+    }
+    try{
+        const user = await Users.findById(id);
+        res.json({
+            success : true,
+            message : "User fetched successfully",
+            user : user
+        })
+
+    }catch(error){
+        console.log(error);
+        res.status(500).json("Server Error")
+
+    }
+}
 
 
 const getRequest = async (req, res) => {
@@ -157,5 +179,5 @@ const getFeedback = async (req, res) => {
 
 
 module.exports = {
-    getAllProviders,getRequest,acceptRequest,rejectRequest,createNotification,getFeedback
+    getAllProviders,getRequest,acceptRequest,rejectRequest,createNotification,getFeedback,getSingleProvider
 }

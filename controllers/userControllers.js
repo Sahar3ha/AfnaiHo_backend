@@ -138,7 +138,7 @@ const getSingleUser= async(req,res)=>{
     }
 }
 
-const createFeedback = async(req,res)=>{
+const  createFeedback = async(req,res)=>{
     const providerId = req.params.id;
 
     console.log(req.body)

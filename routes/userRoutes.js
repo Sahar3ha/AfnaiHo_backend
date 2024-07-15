@@ -6,7 +6,7 @@ router.post('/register', userController.createUser)
 
 // create login api
 router.post('/login', userController.loginUser)
-router.post('/create_feedback/:id',authGuard,userController.createFeedback)
+router.post('/create_feedback/:id',userController.createFeedback)
 router.post('/create_request',userController.createRequest)
 router.get('/activatedRequests/:id',userController.getActivatedRequests)
 router.post('/create_favourite',userController.createFavourites)
