@@ -171,46 +171,69 @@ const  createFeedback = async(req,res)=>{
     }
 }
 
-const createRequest = async(req,res) =>{
-    const{userId,providerId}=req.body;
-    if(!userId || !providerId ){
-        return res.json({
-            success : false,
-            message : "All fields are required"
-        })
+const createRequest = async (req, res) => {
+    const { userId, providerId, price } = req.body;
+  
+    if (!userId || providerId == null) {
+      return res.json({
+        success: false,
+        message: "All fields are required"
+      });
     }
+  
     try {
-
-        const request = await Requests.findOne({
-            userId:userId,
-            providerId:providerId
-        }) 
-        if(request){
-            return res.json({
-                success : false,
-                message : "You've already requested it"
-            })
+      const existingRequest = await Requests.findOne({
+        userId: userId,
+        providerId: providerId
+      });
+  
+      if (existingRequest) {
+        return res.json({
+          success: false,
+          message: "You've already requested it"
+        });
+      }
+  
+      // Fetch provider's profile to get the default price if not provided
+      let finalPrice = price;
+      if (price == null) {
+        const provider = await Users.findById(providerId);
+        if (!provider) {
+          return res.json({
+            success: false,
+            message: "Provider not found"
+          });
         }
-        const requests = new Requests({
-            userId : userId,
-            providerId : providerId,
-        })
-        await requests.save();
-        res.status(200).json({
-            success : true,
-            message : "Request Added successfully",
-            data : requests
-        })
-        
+        finalPrice = provider.price;
+      }
+  
+      const request = new Requests({
+        userId: userId,
+        providerId: providerId,
+        price: finalPrice
+      });
+  
+      await request.save();
+  
+      res.status(200).json({
+        success: true,
+        message: "Request added successfully",
+        data: request
+      });
+  
     } catch (error) {
-        console.log(error);    
-        res.status(500).json({
-            success : false,
-            message : error
-        })
-        
+      console.log(error);
+      res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message
+      });
     }
-}
+  };
+  
+  
+  
+  
 
 const getActivatedRequests = async (req, res) => {
     const userId = req.params.id;
@@ -328,9 +351,9 @@ const deleteFavourite = async(req,res)=>{
 }
 const updateUserProfile = async (req, res) => {
     const userId = req.params.id;
-    console.log(req.body); 
+    console.log(req.body);
   
-    const { firstName, lastName, email, password, service } = req.body;  
+    const { firstName, lastName, email, password, service, price } = req.body;
     if (!firstName || !lastName || !email) {
       return res.json({
         success: false,
@@ -362,6 +385,10 @@ const updateUserProfile = async (req, res) => {
         user.provider = true;
       }
   
+      if (price !== undefined) {
+        user.price = price;
+      }
+  
       await user.save();
   
       res.json({
@@ -373,6 +400,7 @@ const updateUserProfile = async (req, res) => {
           lastName: user.lastName,
           email: user.email,
           ...(service && { service }),
+          ...(price !== undefined && { price })
         }
       });
   
@@ -459,8 +487,134 @@ const getAllUsers = async(req ,res) =>{
     }
 }
 
- 
+const requestComplete = async (req, res) => {
+    try {
+      const requestId = req.params.id;
+      const { rating } = req.body;
+  
+      // Debugging: Log the rating received
+      console.log('Received rating:', rating);
+  
+      // Validate rating
+      const ratingValue = parseFloat(rating);
+      if (isNaN(ratingValue) || ratingValue < 0 || ratingValue > 5) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid rating. Rating must be a number between 0 and 5. Received: ${rating}`,
+        });
+      }
+  
+      const request = await Requests.findById(requestId);
+      if (!request) {
+        return res.status(404).json({
+          success: false,
+          message: 'Request not found',
+        });
+      }
+  
+      request.completed = true;
+      await request.save();
+  
+      // Update the provider's rating
+      const provider = await Users.findById(request.providerId);
+      if (!provider) {
+        return res.status(404).json({
+          success: false,
+          message: 'Provider not found',
+        });
+      }
+  
+      // Debugging: Log provider details before updating rating
+      console.log('Provider details before rating update:', provider);
+  
+      if (rating) {
+        // Update provider's rating
+        if (!provider.ratingCount) {
+          provider.ratingCount = 0;
+        }
+        if (!provider.ratingSum) {
+          provider.ratingSum = 0;
+        }
+  
+        provider.ratingCount += 1;
+        provider.ratingSum += ratingValue;
+        provider.rating = provider.ratingSum / provider.ratingCount;
+  
+        // Debugging: Log provider details after updating rating
+        console.log('Provider details after rating update:', provider);
+  
+        await provider.save();
+      }
+  
+      res.json({
+        success: true,
+        message: 'Request marked as completed and rating submitted',
+      });
+    } catch (error) {
+      console.error('Error completing request:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Server error',
+        error: error.message,
+      });
+    }
+  };
+  
+const updateUserCoordinates = async(req,res)=>{
+    try {
+        const userId = req.params.id;
+        const { latitude, longitude } = req.body;
+    
+        const user = await Users.findById(userId);
+        if (!user) {
+          return res.status(404).json({ success: false, message: 'User not found' });
+        }
+    
+        user.coordinates = { latitude, longitude };
+        await user.save();
+    
+        res.json({ success: true, message: 'Coordinates updated successfully' });
+      } catch (error) {
+        console.error('Error updating coordinates:', error.message);
+        res.status(500).json({ success: false, message: 'Server error' });
+      }
+}
 
+const getUserCoordinates = async(req,res)=>{
+    try {
+        const { id } = req.params;
+    
+        const user = await Users.findById(id).select('coordinates');
+    
+        if (!user) {
+          return res.status(404).json({ success: false, message: 'User not found' });
+        }
+    
+        res.json({ success: true, coordinates: user.coordinates });
+      } catch (error) {
+        console.error('Error fetching coordinates:', error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+      }
+}
+
+const cancelRequest = async (req, res) => {
+    const requestId = req.params.id;
+  
+    try {
+      const request = await Requests.findByIdAndDelete(requestId);
+      if (!request) {
+        return res.status(404).json({ success: false, message: 'Request not found' });
+      }
+  
+     
+      await request.deleteOne();
+  
+      res.status(200).json({ success: true, message: 'Request canceled successfully' });
+    } catch (error) {
+      console.error('Error canceling request:', error);
+      res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+  };
 module.exports = {
-    createUser,loginUser,getSingleUser,createFeedback,createRequest,getActivatedRequests,createFavourites,getFavourites,deleteFavourite,updateUserProfile, getNotification,deleteNotification,getAllUsers
+    createUser,loginUser,getSingleUser,createFeedback,createRequest,getActivatedRequests,createFavourites,getFavourites,deleteFavourite,updateUserProfile, getNotification,deleteNotification,getAllUsers,requestComplete,updateUserCoordinates,getUserCoordinates,cancelRequest
 }

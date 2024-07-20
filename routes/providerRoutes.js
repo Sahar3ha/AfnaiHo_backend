@@ -11,5 +11,6 @@ router.patch('/reject/:id',providerController.rejectRequest)
 router.post('/create_notification',providerController.createNotification)
 router.get('/get_providers',providerController.getAllProviders)
 router.get('/getFeedback',providerController.getFeedback)
+router.get('/get_topProviders',providerController.topRatedProvider)
 
 module.exports = router;

@@ -47,7 +47,33 @@ const getSingleProvider= async(req,res)=>{
 
     }
 }
-
+const topRatedProvider = async(req,res)=>{
+    try {
+        // Fetch providers who have been rated
+        const providers = await Users.find({ provider: true, ratingCount: { $gt: 0 } });
+    
+        // Calculate average rating
+        providers.forEach(provider => {
+          provider.averageRating = provider.ratingSum / provider.ratingCount;
+        });
+    
+        // Sort by average rating in descending order and limit to top 5
+        providers.sort((a, b) => b.averageRating - a.averageRating);
+        const topRatedProviders = providers.slice(0, 5);
+    
+        res.json({
+          success: true,
+          providers: topRatedProviders
+        });
+      } catch (error) {
+        console.error('Error fetching top-rated providers:', error);
+        res.status(500).json({
+          success: false,
+          message: 'Server error',
+          error: error.message
+        });
+      }
+}
 
 const getRequest = async (req, res) => {
     const providerId = req.params.id;
@@ -82,56 +108,62 @@ const getRequest = async (req, res) => {
         });
     }
 };
-const acceptRequest = async(req,res)=>{
-    const requestId = req.params.id
+const acceptRequest = async (req, res) => {
+    const requestId = req.params.id;
     try {
-        const request = await Requests.findById(requestId);
-        if(!request){
-            return res.json({
-                success:false,
-                message:'No requests found'
-            })
-        }
-        request.accepted=true;
-        await request.save();
-        
-        res.json({
-            success: true,
-            message: 'Request accepted',
+      const request = await Requests.findById(requestId);
+      if (!request) {
+        return res.json({
+          success: false,
+          message: 'No requests found'
         });
+      }
+      request.handled = true;
+      request.accepted = true;
+      request.rejected = false;
+  
+      await request.save();
+      res.json({
+        success: true,
+        message: 'Request accepted',
+      });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({
-            success: false,
-            message: 'Server Error',
-        });
+      console.error(error);
+      res.status(500).json({
+        success: false,
+        message: 'Server Error',
+      });
     }
-}
-
-const rejectRequest = async(req,res)=>{
-    const requestId = req.params.id
+  };
+  
+  const rejectRequest = async (req, res) => {
+    const requestId = req.params.id;
     try {
-        const request = await Requests.findById(requestId);
-        if(!request){
-            return res.json({
-                success:false,
-                message:'No requests found'
-            })
-        }
-        request.accepted=false;
-        await request.save();
-        res.json({
-            success: true,
-            message: 'Request rejected',
+      const request = await Requests.findById(requestId);
+      if (!request) {
+        return res.json({
+          success: false,
+          message: 'No requests found'
         });
+      }
+      request.handled = true;
+      request.accepted = false;
+      request.rejected = true;
+  
+      await request.save();
+      res.json({
+        success: true,
+        message: 'Request rejected',
+      });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({
-            success: false,
-            message: 'Server Error',
-        });
+      console.error(error);
+      res.status(500).json({
+        success: false,
+        message: 'Server Error',
+      });
     }
-}
+  };
+  
 const createNotification = async (req,res)=>{
     const {userId,providerId,requestId}= req.body;
     if(!userId ||! providerId ||!requestId){
@@ -179,5 +211,5 @@ const getFeedback = async (req, res) => {
 
 
 module.exports = {
-    getAllProviders,getRequest,acceptRequest,rejectRequest,createNotification,getFeedback,getSingleProvider
+    getAllProviders,getRequest,acceptRequest,rejectRequest,createNotification,getFeedback,getSingleProvider,topRatedProvider
 }
