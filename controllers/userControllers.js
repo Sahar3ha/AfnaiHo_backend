@@ -137,6 +137,27 @@ const getSingleUser= async(req,res)=>{
 
     }
 }
+const deleteUser = async (req, res) => {
+  try {
+      const userId = req.params.id;
+      await Users.findByIdAndDelete(userId);
+      await Requests.deleteMany({ providerId:userId });
+      await Notification.deleteMany({ providerId:userId });
+      await Favourites.deleteMany({ providerId:userId });
+      await Feedback.deleteMany({ providerId:userId });
+
+      res.json({
+          success: true,
+          message: 'User deleted successfully'
+      });
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({
+          success: false,
+          message: 'Server error'
+      });
+  }
+};
 
 const  createFeedback = async(req,res)=>{
     const providerId = req.params.id;
@@ -616,5 +637,5 @@ const cancelRequest = async (req, res) => {
     }
   };
 module.exports = {
-    createUser,loginUser,getSingleUser,createFeedback,createRequest,getActivatedRequests,createFavourites,getFavourites,deleteFavourite,updateUserProfile, getNotification,deleteNotification,getAllUsers,requestComplete,updateUserCoordinates,getUserCoordinates,cancelRequest
+    createUser,loginUser,getSingleUser,createFeedback,createRequest,getActivatedRequests,createFavourites,getFavourites,deleteFavourite,updateUserProfile, getNotification,deleteNotification,getAllUsers,requestComplete,updateUserCoordinates,getUserCoordinates,cancelRequest,deleteUser
 }

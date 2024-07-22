@@ -21,4 +21,6 @@ router.post('/complete/:id',userController.requestComplete)
 router.put('/updateCoordinates/:id',userController.updateUserCoordinates);
 router.get('/getCoordinates/:id',userController.getUserCoordinates);
 router.delete('/cancelRequest/:id',userController.cancelRequest)
+
+router.delete('/deleteUser/:id',userController.deleteUser)
 module.exports = router;
